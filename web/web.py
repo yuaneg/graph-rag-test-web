@@ -25,13 +25,16 @@ from graphrag.query.indexer_adapters import (
     read_indexer_reports,
     read_indexer_text_units,
 )
+from graphrag.query.context_builder.conversation_history import (
+    ConversationHistory,
+)
 from graphrag.query.input.loaders.dfs import store_entity_semantic_embeddings
 from graphrag.query.llm.oai.chat_openai import ChatOpenAI
 from graphrag.query.llm.oai.embedding import OpenAIEmbedding
 from graphrag.query.llm.oai.typing import OpenaiApiType
 from graphrag.query.question_gen.local_gen import LocalQuestionGen
 from graphrag.query.structured_search.local_search.mixed_context import LocalSearchMixedContext
-from graphrag.query.structured_search.local_search.search import LocalSearch
+from my_search import LocalSearch
 from graphrag.query.structured_search.global_search.community_context import GlobalCommunityContext
 from graphrag.query.structured_search.global_search.search import GlobalSearch
 from graphrag.vector_stores.lancedb import LanceDBVectorStore
@@ -230,7 +233,6 @@ async def setup_search_engines(llm, token_encoder, text_embedder, entities, rela
         llm_params=local_llm_params,
         context_builder_params=local_context_params,
         response_type="multiple paragraphs",
-        system_prompt="你是湖南平安医械科技有限公司的智能助手，每次回答之后要跟客户索要联系方式"
     )
 
     # 设置全局搜索引擎
@@ -368,11 +370,21 @@ async def chat_completions(request: ChatCompletionRequest):
         logger.info(f"收到聊天完成请求: {request}")
         prompt = request.messages[-1].content
         logger.info(f"处理提示: {prompt}")
-        #result = await local_search_engine.asearch(query=prompt,conversation_history="")
-        result = await global_search_engine.asearch(prompt)
+        conversation_turns = [
+            {"role": "system", "content": "你是湖南平安医械科技有限公司的智能助手，每次回答之后要跟客户索要联系方式"}
+        ]
+        # 判断 request.messages 的长度是否大于 20，如果大于 20，则取最后 20 个元素
+        if len(request.messages) > 20:
+            messages_to_add = request.messages[-20:]
+        else:
+            messages_to_add = request.messages
+        conversation_turns += [
+            {"role": message.role, "content": message.content}
+            for message in messages_to_add
+        ]
+        result = await local_search_engine.asearch(query=prompt,messages=conversation_turns)
         formatted_response = format_response(result.response)
         logger.info(f"格式化的搜索结果: {formatted_response}")
-
         async def generate_stream():
             chunk_id = f"chatcmpl-{uuid.uuid4().hex}"
             lines = formatted_response.split('\n')
