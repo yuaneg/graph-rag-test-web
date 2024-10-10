@@ -392,7 +392,7 @@ async def chat_completions(request: ChatCompletionRequest):
                     async for response in local_search_engine.astream_search(query=prompt, messages=conversation_turns):
                         if isinstance(response, str):
                             #response_content += response  # 替换为实际字段
-                            yield f"data: {json.dumps(build_response(chunk_id, request.model, response, None))}"
+                            yield f"data: {json.dumps(build_response(chunk_id, request.model, response, None))}\n"
                 except Exception as e:
                     logger.error(f"Error in event_stream: {str(e)}")
                 finally:
