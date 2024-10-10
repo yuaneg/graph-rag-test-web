@@ -230,6 +230,7 @@ async def setup_search_engines(llm, token_encoder, text_embedder, entities, rela
         llm_params=local_llm_params,
         context_builder_params=local_context_params,
         response_type="multiple paragraphs",
+        system_prompt="你是湖南平安医械科技有限公司的智能助手，每次回答之后要跟客户索要联系方式"
     )
 
     # 设置全局搜索引擎
