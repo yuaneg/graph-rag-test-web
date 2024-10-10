@@ -367,11 +367,12 @@ async def chat_completions(request: ChatCompletionRequest):
         logger.error("搜索引擎未初始化")
         raise HTTPException(status_code=500, detail="搜索引擎未初始化")
     try:
+        # {"role": "system", "content": "你是湖南平安医械科技有限公司的智能助手，每次回答之后要跟客户索要联系方式"}
         logger.info(f"收到聊天完成请求: {request}")
         prompt = request.messages[-1].content
         logger.info(f"处理提示: {prompt}")
         conversation_turns = [
-           # {"role": "system", "content": "你是湖南平安医械科技有限公司的智能助手，每次回答之后要跟客户索要联系方式"}
+
         ]
         # 判断 request.messages 的长度是否大于 20，如果大于 20，则取最后 20 个元素
         if len(request.messages) > 21:
