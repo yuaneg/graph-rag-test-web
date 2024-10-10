@@ -368,7 +368,8 @@ async def chat_completions(request: ChatCompletionRequest):
         logger.info(f"收到聊天完成请求: {request}")
         prompt = request.messages[-1].content
         logger.info(f"处理提示: {prompt}")
-        result = await local_search_engine.asearch(prompt)
+        #result = await local_search_engine.asearch(query=prompt,conversation_history="")
+        result = await global_search_engine.asearch(prompt)
         formatted_response = format_response(result.response)
         logger.info(f"格式化的搜索结果: {formatted_response}")
 
