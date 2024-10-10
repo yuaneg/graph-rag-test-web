@@ -1,0 +1,4 @@
+fastapi
+tavily-python
+uvicorn
+python-dotenv
