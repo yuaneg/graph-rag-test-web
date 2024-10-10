@@ -12,7 +12,6 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any, Union
 from contextlib import asynccontextmanager
-from tavily import TavilyClient
 from dotenv import load_dotenv
 
 load_dotenv(".env")
@@ -216,7 +215,7 @@ async def setup_search_engines(llm, token_encoder, text_embedder, entities, rela
         "include_community_rank": False,
         "return_candidate_context": False,
         "embedding_vectorstore_key": EntityVectorStoreKey.ID,
-        "max_tokens": 12_000,
+        "max_tokens": 800,
     }
 
     local_llm_params = {
@@ -287,7 +286,6 @@ def format_response(response):
     格式化响应，添加适当的换行和段落分隔。
     """
     paragraphs = re.split(r'\n{2,}', response)
-
     formatted_paragraphs = []
     for para in paragraphs:
         if '```' in para:
@@ -298,29 +296,8 @@ def format_response(response):
             para = ''.join(parts)
         else:
             para = para.replace('. ', '.\n')
-
         formatted_paragraphs.append(para.strip())
-
     return '\n\n'.join(formatted_paragraphs)
-
-
-async def tavily_search(prompt: str):
-    """
-    使用Tavily API进行搜索
-    """
-    try:
-        client = TavilyClient(api_key=os.environ['TAVILY_API_KEY'])
-        resp = client.search(prompt, search_depth="advanced")
-
-        # 将Tavily响应转换为Markdown格式
-        markdown_response = "# 搜索结果\n\n"
-        for result in resp.get('results', []):
-            markdown_response += f"## [{result['title']}]({result['url']})\n\n"
-            markdown_response += f"{result['content']}\n\n"
-
-        return markdown_response
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Tavily搜索错误: {str(e)}")
 
 
 @asynccontextmanager
@@ -390,22 +367,10 @@ async def chat_completions(request: ChatCompletionRequest):
         logger.info(f"收到聊天完成请求: {request}")
         prompt = request.messages[-1].content
         logger.info(f"处理提示: {prompt}")
-        # 根据模型选择使用不同的搜索方法
-        if request.model == "graphrag-global-search:latest":
-            result = await global_search_engine.asearch(prompt)
-            formatted_response = format_response(result.response)
-        elif request.model == "tavily-search:latest":
-            result = await tavily_search(prompt)
-            formatted_response = result
-        elif request.model == "full-model:latest":
-            formatted_response = await full_model_search(prompt)
-        else:  # 默认使用本地搜索
-            result = await local_search_engine.asearch(prompt)
-            formatted_response = format_response(result.response)
+        result = await local_search_engine.asearch(prompt)
+        formatted_response = format_response(result.response)
         logger.info(f"格式化的搜索结果: {formatted_response}")
 
-        # 流式响应和非流式响应的处理保持不变
-        # if request.stream:
         async def generate_stream():
             chunk_id = f"chatcmpl-{uuid.uuid4().hex}"
             lines = formatted_response.split('\n')
@@ -444,25 +409,6 @@ async def chat_completions(request: ChatCompletionRequest):
             yield "data: [DONE]\n\n"
 
         return StreamingResponse(generate_stream(), media_type="text/event-stream")
-        # else:
-        #     response = ChatCompletionResponse(
-        #         model=request.model,
-        #         choices=[
-        #             ChatCompletionResponseChoice(
-        #                 index=0,
-        #                 message=Message(role="assistant", content=formatted_response),
-        #                 finish_reason="stop"
-        #             )
-        #         ],
-        #         usage=Usage(
-        #             prompt_tokens=len(prompt.split()),
-        #             completion_tokens=len(formatted_response.split()),
-        #             total_tokens=len(prompt.split()) + len(formatted_response.split())
-        #         )
-        #     )
-        #     logger.info(f"发送响应: {response}")
-        #     return JSONResponse(content=response.dict())
-
     except Exception as e:
         logger.error(f"处理聊天完成时出错: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -476,8 +422,7 @@ async def list_models():
     logger.info("收到模型列表请求")
     current_time = int(time.time())
     models = [
-        {"id": "graphrag-www_hnpamd_com_1", "object": "model", "created": current_time - 100000,
-         "owned_by": "graphrag"}
+        {"id": "graphrag-www_hnpamd_com_1", "object": "model", "created": current_time - 100000, "owned_by": "graphrag"}
     ]
     response = {
         "object": "list",
