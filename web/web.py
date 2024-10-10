@@ -384,15 +384,15 @@ async def chat_completions(request: ChatCompletionRequest):
         ]
         chunk_id = f"chatcmpl-{uuid.uuid4().hex}"
         if request.stream:
-            response_content = ""  # 初始化 response_content 变量
+            #response_content = ""  # 初始化 response_content 变量
 
             async def event_stream():
-                nonlocal response_content
+                #nonlocal response_content
                 try:
                     async for response in local_search_engine.astream_search(query=prompt, messages=conversation_turns):
                         if isinstance(response, str):
-                            response_content += response  # 替换为实际字段
-                            yield f"data: {json.dumps(build_response(chunk_id, request.model, response_content, None))}\n\n"
+                            #response_content += response  # 替换为实际字段
+                            yield f"data: {json.dumps(build_response(chunk_id, request.model, response, None))}\n\n"
                 except Exception as e:
                     logger.error(f"Error in event_stream: {str(e)}")
                 finally:
