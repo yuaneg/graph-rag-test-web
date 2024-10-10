@@ -35,20 +35,16 @@ class LocalSearch(BaseSearch):
     def search(self, query: str, conversation_history: ConversationHistory | None = None, **kwargs) -> SearchResult:
         pass
 
-    def astream_search(self, query: str, conversation_history: ConversationHistory | None = None) -> AsyncGenerator[
-        str, None]:
-        pass
-
     def __init__(
-        self,
-        llm: BaseLLM,
-        context_builder: LocalContextBuilder,
-        token_encoder: tiktoken.Encoding | None = None,
-        system_prompt: str = LOCAL_SEARCH_SYSTEM_PROMPT,
-        response_type: str = "multiple paragraphs",
-        callbacks: list[BaseLLMCallback] | None = None,
-        llm_params: dict[str, Any] = DEFAULT_LLM_PARAMS,
-        context_builder_params: dict | None = None,
+            self,
+            llm: BaseLLM,
+            context_builder: LocalContextBuilder,
+            token_encoder: tiktoken.Encoding | None = None,
+            system_prompt: str = LOCAL_SEARCH_SYSTEM_PROMPT,
+            response_type: str = "multiple paragraphs",
+            callbacks: list[BaseLLMCallback] | None = None,
+            llm_params: dict[str, Any] = DEFAULT_LLM_PARAMS,
+            context_builder_params: dict | None = None,
     ):
         super().__init__(
             llm=llm,
@@ -62,10 +58,10 @@ class LocalSearch(BaseSearch):
         self.response_type = response_type
 
     async def asearch(
-        self,
-        query: str,
-        conversation_history: ConversationHistory | None = None,
-        **kwargs,
+            self,
+            query: str,
+            conversation_history: ConversationHistory | None = None,
+            **kwargs,
     ) -> SearchResult:
         """Build local search context that fits a single context window and generate answer for the user query."""
         start_time = time.time()
@@ -102,3 +98,26 @@ class LocalSearch(BaseSearch):
                 llm_calls=1,
                 prompt_tokens=num_tokens(search_prompt, self.token_encoder),
             )
+
+    async def astream_search(
+            self,
+            query: str,
+            conversation_history: ConversationHistory | None = None,
+            **keywords
+    ) -> AsyncGenerator:
+        """Build local search context that fits a single context window and generate answer for the user query."""
+        start_time = time.time()
+        context_text, context_records = self.context_builder.build_context(
+            query=query,
+            conversation_history=conversation_history,
+            **self.context_builder_params,
+        )
+        log.info("GENERATE ANSWER: %s. QUERY: %s", start_time, query)
+        # send context records first before sending the reduce response
+        yield context_records
+        async for response in self.llm.astream_generate(  # type: ignore
+                **keywords,
+                callbacks=self.callbacks,
+                **self.llm_params,
+        ):
+            yield response

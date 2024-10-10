@@ -374,55 +374,50 @@ async def chat_completions(request: ChatCompletionRequest):
             {"role": "system", "content": "你是湖南平安医械科技有限公司的智能助手，每次回答之后要跟客户索要联系方式"}
         ]
         # 判断 request.messages 的长度是否大于 20，如果大于 20，则取最后 20 个元素
-        if len(request.messages) > 20:
-            messages_to_add = request.messages[-20:]
+        if len(request.messages) > 21:
+            messages_to_add = request.messages[-21:]
         else:
             messages_to_add = request.messages
         conversation_turns += [
             {"role": message.role, "content": message.content}
             for message in messages_to_add
         ]
-        result = await local_search_engine.asearch(query=prompt,messages=conversation_turns)
-        formatted_response = format_response(result.response)
-        logger.info(f"格式化的搜索结果: {formatted_response}")
-        async def generate_stream():
-            chunk_id = f"chatcmpl-{uuid.uuid4().hex}"
-            lines = formatted_response.split('\n')
-            for i, line in enumerate(lines):
-                chunk = {
-                    "id": chunk_id,
-                    "object": "chat.completion.chunk",
-                    "created": int(time.time()),
-                    "model": request.model,
-                    "choices": [
-                        {
-                            "index": 0,
-                            "delta": {"content": line + '\n'},
-                            # if i > 0 else {"role": "assistant", "content": ""},
-                            "finish_reason": None
-                        }
-                    ]
-                }
-                yield f"data: {json.dumps(chunk)}\n\n"
-                await asyncio.sleep(0.05)
+        chunk_id = f"chatcmpl-{uuid.uuid4().hex}"
+        if request.stream:
+            response_content = ""  # 初始化 response_content 变量
 
-            final_chunk = {
-                "id": chunk_id,
-                "object": "chat.completion.chunk",
-                "created": int(time.time()),
-                "model": request.model,
-                "choices": [
-                    {
-                        "index": 0,
-                        "delta": {},
-                        "finish_reason": "stop"
-                    }
-                ]
-            }
-            yield f"data: {json.dumps(final_chunk)}\n\n"
-            yield "data: [DONE]\n\n"
+            async def event_stream():
+                nonlocal response_content
+                try:
+                    async for response in local_search_engine.astream_search(query=prompt, messages=conversation_turns):
+                        if isinstance(response, str):
+                            response_content += response  # 替换为实际字段
+                            yield f"data: {json.dumps(build_response(chunk_id, request.model, response_content, None))}\n\n"
+                except Exception as e:
+                    logger.error(f"Error in event_stream: {str(e)}")
+                finally:
+                    final_chunk = build_response(chunk_id, request.model, None, "stop")
+                    yield f"data: {json.dumps(final_chunk)}\n\n"
+                    yield "data: [DONE]\n\n"
 
-        return StreamingResponse(generate_stream(), media_type="text/event-stream")
+        else:
+            result = await local_search_engine.asearch(query=prompt, messages=conversation_turns)
+            formatted_response = format_response(result.response)
+            logger.info(f"格式化的搜索结果: {formatted_response}")
+
+            async def event_stream():
+                lines = formatted_response.split('\n')
+                try:
+                    for i, line in enumerate(lines):
+                        yield f"data: {json.dumps(build_response(chunk_id, request.model, line, None))}\n\n"
+                        await asyncio.sleep(0.05)
+                except Exception as e:
+                    logger.error(f"Error in event_stream: {str(e)}")
+                finally:
+                    final_chunk = build_response(chunk_id, request.model, None, "stop")
+                    yield f"data: {json.dumps(final_chunk)}\n\n"
+                    yield "data: [DONE]\n\n"
+        return StreamingResponse(event_stream(), media_type="text/event-stream")
     except Exception as e:
         logger.error(f"处理聊天完成时出错: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -444,6 +439,28 @@ async def list_models():
     }
     logger.info(f"发送模型列表: {response}")
     return JSONResponse(content=response)
+
+
+# 拼接返回json
+def build_response(chunk_id: object, model: object, line: object, reason: object) -> object:
+    if line:
+        content = {"content": line + '\n'}
+    else:
+        content = {}
+    chunk = {
+        "id": chunk_id,
+        "object": "chat.completion.chunk",
+        "created": int(time.time()),
+        "model": model,
+        "choices": [
+            {
+                "index": 0,
+                "delta": content,
+                "finish_reason": reason
+            }
+        ]
+    }
+    return chunk
 
 
 if __name__ == "__main__":
