@@ -218,7 +218,7 @@ async def setup_search_engines(llm, token_encoder, text_embedder, entities, rela
         "include_community_rank": False,
         "return_candidate_context": False,
         "embedding_vectorstore_key": EntityVectorStoreKey.ID,
-        "max_tokens": 1200,
+        "max_tokens": 800,
     }
 
     local_llm_params = {
