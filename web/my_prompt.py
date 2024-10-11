@@ -15,20 +15,15 @@ Generate a response of the target length and format that responds to the user's 
 
 If you don't know the answer, just say so. Do not make anything up.
 
-Points supported by data should list their data references as follows:
+Points supported by data should not list their data references as follows:
 
-"This is an example sentence supported by multiple data references [Data: <dataset name> (record ids); <dataset name> (record ids)]."
-
-Do not list more than 5 record ids in a single reference. Instead, list the top 5 most relevant record ids and add "+more" to indicate that there are more.
+"This is an example sentence supported by multiple data references ."
 
 For example:
 
-"Person X is the owner of Company Y and subject to many allegations of wrongdoing [Data: Sources (15, 16), Reports (1), Entities (5, 7); Relationships (23); Claims (2, 7, 34, 46, 64, +more)]."
-
-where 15, 16, 1, 5, 7, 23, 2, 7, 34, 46, and 64 represent the id (not the index) of the relevant data record.
+"Person X is the owner of Company Y and subject to many allegations of wrongdoing "
 
 Do not include information where the supporting evidence for it is not provided.
-
 
 ---Target response length and format---
 
@@ -46,17 +41,13 @@ Generate a response of the target length and format that responds to the user's 
 
 If you don't know the answer, just say so. Do not make anything up.
 
-Points supported by data should list their data references as follows:
+Points supported by data:
 
-"This is an example sentence supported by multiple data references [Data: <dataset name> (record ids); <dataset name> (record ids)]."
-
-Do not list more than 5 record ids in a single reference. Instead, list the top 5 most relevant record ids and add "+more" to indicate that there are more.
+"This is an example sentence supported by multiple data references."
 
 For example:
 
-"Person X is the owner of Company Y and subject to many allegations of wrongdoing [Data: Sources (15, 16), Reports (1), Entities (5, 7); Relationships (23); Claims (2, 7, 34, 46, 64, +more)]."
-
-where 15, 16, 1, 5, 7, 23, 2, 7, 34, 46, and 64 represent the id (not the index) of the relevant data record.
+"Person X is the owner of Company Y and subject to many allegations of wrongdoing ."
 
 Do not include information where the supporting evidence for it is not provided.
 

@@ -384,14 +384,10 @@ async def chat_completions(request: ChatCompletionRequest):
         ]
         chunk_id = f"chatcmpl-{uuid.uuid4().hex}"
         if request.stream:
-            # response_content = ""  # 初始化 response_content 变量
-
             async def event_stream():
-                # nonlocal response_content
                 try:
                     async for response in local_search_engine.astream_search(query=prompt, messages=conversation_turns):
                         if isinstance(response, str):
-                            #response_content += response  # 替换为实际字段
                             yield f"data: {json.dumps(build_response(chunk_id, request.model, response, None))}\n\n"
                 except Exception as e:
                     logger.error(f"Error in event_stream: {str(e)}")
@@ -404,7 +400,6 @@ async def chat_completions(request: ChatCompletionRequest):
             result = await local_search_engine.asearch(query=prompt, messages=conversation_turns)
             formatted_response = format_response(result.response)
             logger.info(f"格式化的搜索结果: {formatted_response}")
-
             async def event_stream():
                 lines = formatted_response.split('\n')
                 try:

@@ -7,7 +7,7 @@ import logging
 import time
 from collections.abc import AsyncGenerator
 from typing import Any
-
+import json
 import tiktoken
 
 from graphrag.query.context_builder.builders import LocalContextBuilder
@@ -72,7 +72,6 @@ class LocalSearch(BaseSearch):
             conversation_history=conversation_history,
             **self.context_builder_params,
         )
-        log.info("GENERATE ANSWER: %s. QUERY: %s", start_time, query)
         try:
             messages = self.reformat_message(context_text=context_text, message=kwargs['messages'])
             response = await self.llm.agenerate(
@@ -107,15 +106,12 @@ class LocalSearch(BaseSearch):
             **kwargs
     ) -> AsyncGenerator:
         """Build local search context that fits a single context window and generate answer for the user query."""
-        start_time = time.time()
         context_text, context_records = self.context_builder.build_context(
             query=query,
             conversation_history=conversation_history,
             **self.context_builder_params,
         )
         messages = self.reformat_message(context_text=context_text, message=kwargs['messages'])
-        log.info("GENERATE ANSWER: %s. QUERY: %s", start_time, query)
-        # send context records first before sending the reduce response
         yield context_records
         async for response in self.llm.astream_generate(  # type: ignore
                 messages=messages,
@@ -136,4 +132,5 @@ class LocalSearch(BaseSearch):
                 break
         else:
             message.insert(0, {"role": "system", "content": search_prompt})
+        log.info("请求信息:\n" + json.dumps(message, indent=4, ensure_ascii=False))
         return message
