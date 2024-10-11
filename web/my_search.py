@@ -23,7 +23,7 @@ from my_prompt import (
 )
 
 DEFAULT_LLM_PARAMS = {
-    "max_tokens": 1500,
+    "max_tokens": 400,
     "temperature": 0.0,
 }
 
