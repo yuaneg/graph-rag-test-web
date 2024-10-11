@@ -17,7 +17,8 @@ from graphrag.query.context_builder.conversation_history import (
 from graphrag.query.llm.base import BaseLLM, BaseLLMCallback
 from graphrag.query.llm.text_utils import num_tokens
 from graphrag.query.structured_search.base import BaseSearch, SearchResult
-from graphrag.query.structured_search.local_search.system_prompt import (
+
+from my_prompt import (
     LOCAL_SEARCH_SYSTEM_PROMPT,
 )
 
@@ -69,13 +70,13 @@ class LocalSearch(BaseSearch):
         context_text, context_records = self.context_builder.build_context(
             query=query,
             conversation_history=conversation_history,
-            **kwargs,
             **self.context_builder_params,
         )
         log.info("GENERATE ANSWER: %s. QUERY: %s", start_time, query)
         try:
+            messages = self.reformat_message(context_text=context_text, message=kwargs['messages'])
             response = await self.llm.agenerate(
-                **kwargs,
+                messages=messages,
                 streaming=True,
                 callbacks=self.callbacks,
                 **self.llm_params,
@@ -103,7 +104,7 @@ class LocalSearch(BaseSearch):
             self,
             query: str,
             conversation_history: ConversationHistory | None = None,
-            **keywords
+            **kwargs
     ) -> AsyncGenerator:
         """Build local search context that fits a single context window and generate answer for the user query."""
         start_time = time.time()
@@ -112,12 +113,27 @@ class LocalSearch(BaseSearch):
             conversation_history=conversation_history,
             **self.context_builder_params,
         )
+        messages = self.reformat_message(context_text=context_text, message=kwargs['messages'])
         log.info("GENERATE ANSWER: %s. QUERY: %s", start_time, query)
         # send context records first before sending the reduce response
         yield context_records
         async for response in self.llm.astream_generate(  # type: ignore
-                **keywords,
+                messages=messages,
                 callbacks=self.callbacks,
                 **self.llm_params,
         ):
             yield response
+
+    def reformat_message(self, context_text: str, message: list) -> list:
+        content = next((msg['content'] for msg in message if msg['role'] == 'system'), None)
+        role = content or 'You are a helpful assistant responding to questions about data in the tables provided.'
+        search_prompt = self.system_prompt.format(
+            context_data=context_text, response_type=self.response_type, role=role
+        )
+        for msg in message:
+            if msg['role'] == 'system':
+                msg.update({"role": "system", "content": search_prompt})
+                break
+        else:
+            message.insert(0, {"role": "system", "content": search_prompt})
+        return message
