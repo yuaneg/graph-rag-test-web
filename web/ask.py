@@ -3,7 +3,7 @@ if __name__ == '__main__':
     run_local_search(
         "",
         "output",
-        "/Users/yuaneg/git-source/graphrag-rag/example/userdata/www_hnpamd_com_2",
+        "/example/userdata/www_hnpamd_com_2400",
         2,
        "multiple paragraphs",
         False,
