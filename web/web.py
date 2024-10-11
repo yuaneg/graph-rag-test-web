@@ -385,24 +385,12 @@ async def chat_completions(request: ChatCompletionRequest):
                     yield f"data: {json.dumps(final_chunk)}\n\n"
                     yield "data: [DONE]\n\n"
 
+            return StreamingResponse(event_stream(), media_type="text/event-stream")
         else:
             result = await local_search_engine.asearch(query=prompt, messages=conversation_turns)
             formatted_response = format_response(result.response)
-            logger.info(f"格式化的搜索结果: {formatted_response}")
-
-            async def event_stream():
-                lines = formatted_response.split('\n')
-                try:
-                    for i, line in enumerate(lines):
-                        yield f"data: {json.dumps(build_response(chunk_id, request.model, line, None))}\n\n"
-                        await asyncio.sleep(0.05)
-                except Exception as e:
-                    logger.error(f"Error in event_stream: {str(e)}")
-                finally:
-                    final_chunk = build_response(chunk_id, request.model, None, "stop")
-                    yield f"data: {json.dumps(final_chunk)}\n\n"
-                    yield "data: [DONE]\n\n"
-        return StreamingResponse(event_stream(), media_type="text/event-stream")
+            final_chunk = build_response(chunk_id, request.model, formatted_response, "stop")
+            return final_chunk
     except Exception as e:
         logger.error(f"处理聊天完成时出错: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

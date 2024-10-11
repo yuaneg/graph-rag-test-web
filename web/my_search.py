@@ -133,4 +133,5 @@ class LocalSearch(BaseSearch):
         else:
             message.insert(0, {"role": "system", "content": search_prompt})
         log.info("请求信息:\n" + json.dumps(message, indent=4, ensure_ascii=False))
+        log.info("从向量数据库检索到的信息:\n" + context_text)
         return message
