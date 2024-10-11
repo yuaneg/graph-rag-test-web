@@ -7,10 +7,10 @@ import re
 import pandas as pd
 import tiktoken
 import logging
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any, Union
+from typing import List, Optional, Dict, Union
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
@@ -25,9 +25,7 @@ from graphrag.query.indexer_adapters import (
     read_indexer_reports,
     read_indexer_text_units,
 )
-from graphrag.query.context_builder.conversation_history import (
-    ConversationHistory,
-)
+
 from graphrag.query.input.loaders.dfs import store_entity_semantic_embeddings
 from graphrag.query.llm.oai.chat_openai import ChatOpenAI
 from graphrag.query.llm.oai.embedding import OpenAIEmbedding
@@ -111,19 +109,13 @@ async def setup_llm_and_embedder():
     logger.info("正在设置LLM和嵌入器")
 
     # 获取API密钥和基础URL
-    api_key = os.environ.get("GRAPHRAG_API_KEY", "YOUR_API_KEY")
+    api_key = os.environ.get("GRAPHRAG_API_KEY", "")
     api_key_embedding = os.environ.get("GRAPHRAG_API_KEY_EMBEDDING", api_key)
-    api_base = os.environ.get("API_BASE", "https://api.openai.com/v1")
-    api_base_embedding = os.environ.get("API_BASE_EMBEDDING", "https://api.openai.com/v1")
-
+    api_base = os.environ.get("API_BASE", "")
+    api_base_embedding = os.environ.get("API_BASE_EMBEDDING", "")
     # 获取模型名称
-    llm_model = os.environ.get("GRAPHRAG_LLM_MODEL", "gpt-3.5-turbo-0125")
-    embedding_model = os.environ.get("GRAPHRAG_EMBEDDING_MODEL", "text-embedding-3-small")
-
-    # 检查API密钥是否存在
-    if api_key == "YOUR_API_KEY":
-        logger.error("环境变量中未找到有效的GRAPHRAG_API_KEY")
-        raise ValueError("GRAPHRAG_API_KEY未正确设置")
+    llm_model = os.environ.get("GRAPHRAG_LLM_MODEL", "")
+    embedding_model = os.environ.get("GRAPHRAG_EMBEDDING_MODEL", "")
 
     # 初始化ChatOpenAI实例
     llm = ChatOpenAI(
@@ -363,9 +355,6 @@ async def full_model_search(prompt: str):
 
 @app.post("/v1/chat/completions")
 async def chat_completions(request: ChatCompletionRequest):
-    if not local_search_engine or not global_search_engine:
-        logger.error("搜索引擎未初始化")
-        raise HTTPException(status_code=500, detail="搜索引擎未初始化")
     try:
         logger.info(f"收到聊天完成请求: {request}")
         prompt = request.messages[-1].content
@@ -400,6 +389,7 @@ async def chat_completions(request: ChatCompletionRequest):
             result = await local_search_engine.asearch(query=prompt, messages=conversation_turns)
             formatted_response = format_response(result.response)
             logger.info(f"格式化的搜索结果: {formatted_response}")
+
             async def event_stream():
                 lines = formatted_response.split('\n')
                 try:
