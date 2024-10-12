@@ -1,5 +1,4 @@
 import os
-import asyncio
 import time
 import uuid
 import json
@@ -436,8 +435,8 @@ def build_response(chunk_id: object, model: object, line: object, reason: object
     return chunk
 
 
-if __name__ == "__main__":
-    import uvicorn
-
-    logger.info(f"在端口 {PORT} 上启动服务器")
-    uvicorn.run(app, host="0.0.0.0", port=PORT)
+# if __name__ == "__main__":
+#     import uvicorn
+#
+#     logger.info(f"在端口 {PORT} 上启动服务器")
+#     uvicorn.run(app, host="0.0.0.0", port=PORT)

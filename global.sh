@@ -1,1 +1,0 @@
-python -m graphrag.query --root $1 --method global $2 --streaming

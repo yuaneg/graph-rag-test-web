@@ -15,7 +15,7 @@ from contextlib import asynccontextmanager
 from tavily import TavilyClient
 from dotenv import load_dotenv
 
-load_dotenv(".env")
+load_dotenv("../app/.env")
 
 # GraphRAG 相关导入
 from graphrag.query.context_builder.entity_extraction import EntityVectorStoreKey
